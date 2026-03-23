@@ -43,3 +43,19 @@ def upvote_doubt(doubt_id: int, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(doubt)
     return {"message": "Upvoted", "data": doubt}
+
+@router.get("/doubts/{doubt_id}")
+def get_doubt_by_id(doubt_id: int, db: Session = Depends(get_db)):
+    doubt = db.query(DoubtModel).filter(DoubtModel.id == doubt_id).first()
+    if not doubt:
+        raise HTTPException(status_code=404, detail="Doubt not found")
+    return {"doubt": doubt}
+
+@router.delete("/doubts/{doubt_id}")
+def delete_doubt(doubt_id: int, db: Session = Depends(get_db)):
+    doubt = db.query(DoubtModel).filter(DoubtModel.id == doubt_id).first()
+    if not doubt:
+        raise HTTPException(status_code=404, detail="Doubt not found")
+    db.delete(doubt)
+    db.commit()
+    return {"message": "Doubt deleted"}
