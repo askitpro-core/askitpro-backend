@@ -38,12 +38,23 @@ def submit_doubt(doubt: Doubt, db: Session = Depends(get_db)):
 
 # ------------------ GET ALL DOUBTS ------------------
 
+from fastapi import Query
+from app.services.content_filter import filter_doubts
+
 @router.get("/doubts")
-def get_doubts(db: Session = Depends(get_db)):
+def get_doubts(
+    search: str = Query(None),
+    sort: str = Query(None),
+    limit: int = Query(None),
+    db: Session = Depends(get_db)
+):
     doubts = db.query(DoubtModel).all()
 
+    # Apply filter service
+    filtered = filter_doubts(doubts, search, sort, limit)
+
     result = []
-    for d in doubts:
+    for d in filtered:
         result.append({
             "id": d.id,
             "title": d.title,
