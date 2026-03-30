@@ -1,18 +1,13 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query,Body
 from app.models.doubt import Doubt
+from app.services.content_filter import validate_content
 
 print("ROUTES FILE LOADED") 
+# filtering implemented
 
 router = APIRouter()
 
 doubts_storage = []
-
-
-@router.post("/submit-doubt")
-def submit_doubt(doubt: Doubt):
-    doubts_storage.append(doubt.dict())
-    return {"message": "Doubt received", "data": doubt}
-
 
 @router.get("/doubts")
 def get_doubts(
@@ -20,7 +15,7 @@ def get_doubts(
     search: str = Query(None),
     limit: int = Query(None)
 ):
-    print("GET /doubts called")  # ✅ now it will run
+    print("GET /doubts called") 
 
     result = doubts_storage
 
@@ -36,3 +31,14 @@ def get_doubts(
         result = result[:limit]
 
     return {"doubts": result}
+@router.post("/submit-doubt")
+def submit_doubt(doubt: Doubt=Body(...)):
+    print("......submit doub hit.....")
+    validate_content(doubt.title)
+
+    if doubt.description:
+        validate_content(doubt.description)
+
+    doubts_storage.append(doubt.dict())
+
+    return {"message": "Doubt received", "data": doubt}
