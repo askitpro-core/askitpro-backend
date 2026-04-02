@@ -4,6 +4,7 @@ from app.models.doubt import Doubt
 from app.models.db_models import DoubtModel, Vote
 from app.database import SessionLocal
 from datetime import datetime
+from app.services.ai_engine import find_cluster_for_doubt, generate_auto_tag
 
 #  IMPORT THE AI ENGINE AND FILTER
 from app.services.ai_engine import find_cluster_for_doubt
@@ -26,26 +27,26 @@ def submit_doubt(doubt: Doubt, db: Session = Depends(get_db)):
     if not doubt.title.strip() or not doubt.description.strip():
         raise HTTPException(status_code=400, detail="Title and description cannot be empty")
 
-    # 1. Get all existing doubts from the DB
     existing_doubts = db.query(DoubtModel).all()
 
-    # 2. Ask the AI for a cluster_id based on the description
+    # 🔥 Ask the AI for the cluster AND the tag
     assigned_cluster_id = find_cluster_for_doubt(doubt.description, existing_doubts)
+    assigned_tag = generate_auto_tag(doubt.description) 
 
-    # 3. Save to database with the AI cluster_id
     new_doubt = DoubtModel(
         title=doubt.title,
         description=doubt.description,
         submitted_at=str(datetime.now()),
         upvotes=0,
-        cluster_id=assigned_cluster_id #  AI Generated ID
+        cluster_id=assigned_cluster_id,
+        tag=assigned_tag # 🔥 Save the AI Tag
     )
 
     db.add(new_doubt)
     db.commit()
     db.refresh(new_doubt)
 
-    return {"message": "Doubt received and clustered", "data": new_doubt}
+    return {"message": "Doubt received, clustered, and tagged", "data": new_doubt}
 
 
 # ------------------ GET ALL DOUBTS ------------------

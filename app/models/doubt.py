@@ -1,3 +1,4 @@
+from app.services.ai_engine import find_cluster_for_doubt, generate_auto_tag
 from pydantic import BaseModel
 from datetime import datetime
 

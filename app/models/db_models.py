@@ -11,6 +11,7 @@ class DoubtModel(Base):
     submitted_at = Column(String)
     upvotes = Column(Integer, default=0)
     cluster_id = Column(String, index=True) #  THE AI COLUMN
+    tag = Column(String) #  THE NEW AUTO-TAG COLUMN
 
 
 class Vote(Base):
