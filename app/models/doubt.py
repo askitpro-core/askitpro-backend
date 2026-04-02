@@ -1,12 +1,7 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 
 class Doubt(BaseModel):
     title: str
     description: str
-    submitted_at: str = ""
-
-    def __init__(self, **data):
-        if "submitted_at" not in data:
-            data["submitted_at"] = str(datetime.now())
-        super().__init__(**data)
+    submitted_at: str = Field(default_factory=lambda: str(datetime.now()))
