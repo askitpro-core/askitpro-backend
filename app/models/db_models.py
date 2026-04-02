@@ -10,6 +10,7 @@ class DoubtModel(Base):
     description = Column(String)
     submitted_at = Column(String)
     upvotes = Column(Integer, default=0)
+    cluster_id = Column(String, index=True) #  THE AI COLUMN
 
 
 class Vote(Base):

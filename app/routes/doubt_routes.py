@@ -1,9 +1,13 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.orm import Session
 from app.models.doubt import Doubt
 from app.models.db_models import DoubtModel, Vote
 from app.database import SessionLocal
 from datetime import datetime
+
+#  IMPORT THE AI ENGINE AND FILTER
+from app.services.ai_engine import find_cluster_for_doubt
+from app.services.content_filter import filter_doubts
 
 router = APIRouter()
 
@@ -15,31 +19,36 @@ def get_db():
         db.close()
 
 
-# ------------------ SUBMIT DOUBT ------------------
+# ------------------ SUBMIT DOUBT (AI INTEGRATED) ------------------
 
 @router.post("/submit-doubt")
 def submit_doubt(doubt: Doubt, db: Session = Depends(get_db)):
     if not doubt.title.strip() or not doubt.description.strip():
         raise HTTPException(status_code=400, detail="Title and description cannot be empty")
 
+    # 1. Get all existing doubts from the DB
+    existing_doubts = db.query(DoubtModel).all()
+
+    # 2. Ask the AI for a cluster_id based on the description
+    assigned_cluster_id = find_cluster_for_doubt(doubt.description, existing_doubts)
+
+    # 3. Save to database with the AI cluster_id
     new_doubt = DoubtModel(
         title=doubt.title,
         description=doubt.description,
         submitted_at=str(datetime.now()),
-        upvotes=0
+        upvotes=0,
+        cluster_id=assigned_cluster_id #  AI Generated ID
     )
 
     db.add(new_doubt)
     db.commit()
     db.refresh(new_doubt)
 
-    return {"message": "Doubt received", "data": new_doubt}
+    return {"message": "Doubt received and clustered", "data": new_doubt}
 
 
 # ------------------ GET ALL DOUBTS ------------------
-
-from fastapi import Query
-from app.services.content_filter import filter_doubts
 
 @router.get("/doubts")
 def get_doubts(
@@ -60,7 +69,8 @@ def get_doubts(
             "title": d.title,
             "description": d.description,
             "submitted_at": d.submitted_at,
-            "upvotes": d.upvotes
+            "upvotes": d.upvotes,
+            "cluster_id": d.cluster_id #  Added this so Frontend can build UI groups
         })
 
     return {"doubts": result}
@@ -71,7 +81,7 @@ def get_doubts(
 @router.post("/doubts/{doubt_id}/upvote")
 def upvote_doubt(doubt_id: int, db: Session = Depends(get_db)):
 
-    # 🔥 TEMP USER (replace later with login system)
+    #  TEMP USER (replace later with login system)
     user_id = "temp_user"
 
     # check if already voted
