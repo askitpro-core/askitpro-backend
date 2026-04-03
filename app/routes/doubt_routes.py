@@ -1,13 +1,13 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.orm import Session
+from datetime import datetime
+
 from app.models.doubt import Doubt
 from app.models.db_models import DoubtModel, Vote
 from app.database import SessionLocal
-from datetime import datetime
-from app.services.ai_engine import find_cluster_for_doubt, generate_auto_tag
 
-#  IMPORT THE AI ENGINE AND FILTER
-from app.services.ai_engine import find_cluster_for_doubt
+#  IMPORT ALL AI TOOLS IN ONE LINE
+from app.services.ai_engine import find_cluster_for_doubt, generate_auto_tag, semantic_search
 from app.services.content_filter import filter_doubts
 
 router = APIRouter()
@@ -48,6 +48,25 @@ def submit_doubt(doubt: Doubt, db: Session = Depends(get_db)):
 
     return {"message": "Doubt received, clustered, and tagged", "data": new_doubt}
 
+# ------------------ AI SEMANTIC SEARCH ------------------
+
+@router.get("/search")
+def search_doubts(query: str = Query(..., description="Type your search here"), db: Session = Depends(get_db)):
+    
+    # 1. Grab everything from the database
+    all_doubts = db.query(DoubtModel).all()
+    
+    # 2. Feed it into the AI to rank and sort
+    ai_results = semantic_search(query, all_doubts)
+    
+    if not ai_results:
+        return {"message": "No conceptually similar doubts found.", "results": []}
+        
+    return {
+        "message": "AI Semantic Search Complete", 
+        "search_concept": query,
+        "results": ai_results
+    }
 
 # ------------------ GET ALL DOUBTS ------------------
 
@@ -59,8 +78,6 @@ def get_doubts(
     db: Session = Depends(get_db)
 ):
     doubts = db.query(DoubtModel).all()
-
-    # Apply filter service
     filtered = filter_doubts(doubts, search, sort, limit)
 
     result = []
@@ -71,10 +88,12 @@ def get_doubts(
             "description": d.description,
             "submitted_at": d.submitted_at,
             "upvotes": d.upvotes,
-            "cluster_id": d.cluster_id #  Added this so Frontend can build UI groups
+            "cluster_id": d.cluster_id,
+            "tag": d.tag  # YOU ADD IT RIGHT HERE
         })
 
     return {"doubts": result}
+
 
 
 # ------------------ UPVOTE (FIXED) ------------------

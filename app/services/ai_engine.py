@@ -66,3 +66,44 @@ def find_cluster_for_doubt(new_doubt_text: str, existing_room_doubts: list) -> s
 
     print("New topic detected.")
     return str(uuid.uuid4())
+
+def semantic_search(search_query: str, all_doubts: list, top_k: int = 3):
+    """
+    Takes a search query and ranks the database based on semantic meaning, 
+    not just exact word matches.
+    """
+    if not all_doubts:
+        return []
+
+    print(f"🔍 AI searching for concept: '{search_query}'...")
+    
+    # 1. Embed the search query
+    query_embedding = model.encode(search_query)
+    
+    # 2. Embed all existing doubts (In a massive app, we'd use a Vector DB like Pinecone, but lists are fine for now)
+    doubt_texts = [doubt.description for doubt in all_doubts]
+    doubt_embeddings = model.encode(doubt_texts)
+    
+    # 3. Calculate scores for all doubts at once
+    scores = util.cos_sim(query_embedding, doubt_embeddings)[0]
+    
+    # 4. Use PyTorch to grab the top 'K' highest scoring matches
+    # (min() ensures we don't ask for top 3 if there are only 2 doubts in the DB)
+    top_results = torch.topk(scores, k=min(top_k, len(all_doubts)))
+    
+    ranked_matches = []
+    
+    # top_results[0] are the scores, top_results[1] are the indexes
+    for score, idx in zip(top_results[0], top_results[1]):
+        match_score = score.item()
+        if match_score > 0.25: # Only return it if it's actually somewhat relevant
+            matched_doubt = all_doubts[idx.item()]
+            ranked_matches.append({
+                "id": matched_doubt.id,
+                "title": matched_doubt.title,
+                "description": matched_doubt.description,
+                "tag": matched_doubt.tag,
+                "ai_confidence_score": round(match_score * 100, 2) # Convert 0.85 to 85.0%
+            })
+            
+    return ranked_matches
