@@ -24,22 +24,22 @@ def get_db():
 
 @router.post("/submit-doubt")
 def submit_doubt(doubt: Doubt, db: Session = Depends(get_db)):
-    if not doubt.title.strip() or not doubt.description.strip():
-        raise HTTPException(status_code=400, detail="Title and description cannot be empty")
+    if not doubt.text.strip():
+        raise HTTPException(status_code=400, detail="Text cannot be empty")
 
-    existing_doubts = db.query(DoubtModel).all()
+    existing_room_doubts = db.query(DoubtModel).filter(DoubtModel.room_code == doubt.room_code).all()
 
-    # 🔥 Ask the AI for the cluster AND the tag
-    assigned_cluster_id = find_cluster_for_doubt(doubt.description, existing_doubts)
-    assigned_tag = generate_auto_tag(doubt.description) 
+    assigned_cluster_id = find_cluster_for_doubt(doubt.text, existing_room_doubts)
+    assigned_tag = generate_auto_tag(doubt.text) 
 
     new_doubt = DoubtModel(
-        title=doubt.title,
-        description=doubt.description,
+        text=doubt.text,
+        author_name=doubt.author_name,
+        room_code=doubt.room_code,
         submitted_at=str(datetime.now()),
         upvotes=0,
         cluster_id=assigned_cluster_id,
-        tag=assigned_tag # 🔥 Save the AI Tag
+        tag=assigned_tag
     )
 
     db.add(new_doubt)
@@ -72,28 +72,30 @@ def search_doubts(query: str = Query(..., description="Type your search here"), 
 
 @router.get("/doubts")
 def get_doubts(
+    room_code: str = Query(..., description="Filter by session room code"), # 🔥 Required parameter now
     search: str = Query(None),
     sort: str = Query(None),
     limit: int = Query(None),
     db: Session = Depends(get_db)
 ):
-    doubts = db.query(DoubtModel).all()
+    # Only fetch doubts for the specific room
+    doubts = db.query(DoubtModel).filter(DoubtModel.room_code == room_code).all()
     filtered = filter_doubts(doubts, search, sort, limit)
 
     result = []
     for d in filtered:
         result.append({
             "id": d.id,
-            "title": d.title,
-            "description": d.description,
+            "text": d.text, # Changed
+            "author_name": d.author_name, # Changed
+            "room_code": d.room_code, # Changed
             "submitted_at": d.submitted_at,
             "upvotes": d.upvotes,
             "cluster_id": d.cluster_id,
-            "tag": d.tag  # YOU ADD IT RIGHT HERE
+            "tag": d.tag 
         })
 
     return {"doubts": result}
-
 
 
 # ------------------ UPVOTE (FIXED) ------------------

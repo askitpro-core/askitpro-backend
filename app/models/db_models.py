@@ -5,12 +5,13 @@ class DoubtModel(Base):
     __tablename__ = "doubts"
 
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String)
-    description = Column(String)
+    text = Column(String) # Changed from description
+    author_name = Column(String, index=True) # New
+    room_code = Column(String, index=True) # New
     submitted_at = Column(String)
     upvotes = Column(Integer, default=0)
     cluster_id = Column(String, index=True)
-    tag = Column(String) 
+    tag = Column(String)
 
 class Vote(Base):
     __tablename__ = "votes"
@@ -18,3 +19,4 @@ class Vote(Base):
     id = Column(Integer, primary_key=True, index=True)
     doubt_id = Column(Integer)
     user_id = Column(String)
+

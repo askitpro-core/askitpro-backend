@@ -57,7 +57,7 @@ def find_cluster_for_doubt(new_doubt_text: str, existing_room_doubts: list) -> s
     # Check against existing doubts
     for doubt in existing_room_doubts:
         # FIXED: Changed doubt.text to doubt.description to match your Database
-        existing_embedding = model.encode(doubt.description) 
+        existing_embedding = model.encode(doubt.text)
         score = util.cos_sim(new_embedding, existing_embedding)[0][0].item()
         
         if score >= THRESHOLD:
@@ -81,7 +81,7 @@ def semantic_search(search_query: str, all_doubts: list, top_k: int = 3):
     query_embedding = model.encode(search_query)
     
     # 2. Embed all existing doubts (In a massive app, we'd use a Vector DB like Pinecone, but lists are fine for now)
-    doubt_texts = [doubt.description for doubt in all_doubts]
+    doubt_texts = [doubt.text for doubt in all_doubts]
     doubt_embeddings = model.encode(doubt_texts)
     
     # 3. Calculate scores for all doubts at once
