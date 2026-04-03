@@ -1,3 +1,4 @@
+from app.services.socket_manager import manager
 from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -20,15 +21,17 @@ def get_db():
         db.close()
 
 
-# ------------------ SUBMIT DOUBT (AI INTEGRATED) ------------------
+# ------------------ SUBMIT DOUBT (AI + WEBSOCKET) ------------------
 
 @router.post("/submit-doubt")
-def submit_doubt(doubt: Doubt, db: Session = Depends(get_db)):
+async def submit_doubt(doubt: Doubt, db: Session = Depends(get_db)): # <-- added async here!
     if not doubt.text.strip():
         raise HTTPException(status_code=400, detail="Text cannot be empty")
 
+    # get only this room's doubts for the AI to read
     existing_room_doubts = db.query(DoubtModel).filter(DoubtModel.room_code == doubt.room_code).all()
 
+    # let AI do its thing
     assigned_cluster_id = find_cluster_for_doubt(doubt.text, existing_room_doubts)
     assigned_tag = generate_auto_tag(doubt.text) 
 
@@ -46,7 +49,22 @@ def submit_doubt(doubt: Doubt, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_doubt)
 
-    return {"message": "Doubt received, clustered, and tagged", "data": new_doubt}
+    # 🔥 NEW: Blast the doubt to everyone sitting in the same room!
+    socket_payload = {
+        "type": "NEW_DOUBT",
+        "data": {
+            "id": new_doubt.id,
+            "text": new_doubt.text,
+            "author_name": new_doubt.author_name,
+            "cluster_id": new_doubt.cluster_id,
+            "tag": new_doubt.tag,
+            "upvotes": new_doubt.upvotes
+        }
+    }
+    # await it so it actually fires
+    await manager.broadcast_to_room(socket_payload, doubt.room_code)
+
+    return {"message": "Doubt received, clustered, tagged, and broadcasted!", "data": new_doubt}
 
 # ------------------ AI SEMANTIC SEARCH ------------------
 
