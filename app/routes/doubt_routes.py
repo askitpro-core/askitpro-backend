@@ -1,14 +1,24 @@
 
-from fastapi import APIRouter, Query,Body
+from fastapi import APIRouter, Query, Depends, HTTPException
+from sqlalchemy.orm import Session
+
 from app.models.doubt import Doubt
+from app.database import get_db
+from app.models.db_models import DoubtDB, Vote
+from app.services.content_filter import validate_content, filter_doubts
+
+router = APIRouter()
+
+
 from app.services.content_filter import validate_content
 
-print("ROUTES FILE LOADED") 
+
 
 
 router = APIRouter()
 
-doubts_storage = []
+
+ main
 
 @router.get("/doubts")
 def get_doubts(
@@ -33,6 +43,27 @@ def get_doubts(
 
     return {"doubts": result}
 @router.post("/submit-doubt")
+ 
+def submit_doubt(doubt: Doubt):
+    db = next(get_db())
+
+    validate_content(doubt.title)
+
+    if doubt.description:
+        validate_content(doubt.description)
+
+    new_doubt = DoubtDB(
+        title=doubt.title,
+        description=doubt.description
+    )
+
+    db.add(new_doubt)
+    db.commit()
+    db.refresh(new_doubt)
+
+    return {"message": "Doubt received", "data": new_doubt}
+
+
 def submit_doubt(doubt: Doubt=Body(...)):
     print("......submit doub hit.....")
     validate_content(doubt.title)
@@ -43,6 +74,7 @@ def submit_doubt(doubt: Doubt=Body(...)):
     doubts_storage.append(doubt.dict())
 
     return {"message": "Doubt received", "data": doubt}
+
 
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
@@ -88,15 +120,16 @@ from fastapi import Query
 from app.services.content_filter import filter_doubts
 
 @router.get("/doubts")
+
+@router.get("/doubts")
 def get_doubts(
     search: str = Query(None),
     sort: str = Query(None),
     limit: int = Query(None),
     db: Session = Depends(get_db)
 ):
-    doubts = db.query(DoubtModel).all()
+    doubts = db.query(DoubtDB).all()
 
-    # Apply filter service
     filtered = filter_doubts(doubts, search, sort, limit)
 
     result = []
@@ -112,15 +145,13 @@ def get_doubts(
     return {"doubts": result}
 
 
-# ------------------ UPVOTE (FIXED) ------------------
+# ------------------ UPVOTE ------------------
 
 @router.post("/doubts/{doubt_id}/upvote")
 def upvote_doubt(doubt_id: int, db: Session = Depends(get_db)):
 
-    # 🔥 TEMP USER (replace later with login system)
     user_id = "temp_user"
 
-    # check if already voted
     existing_vote = db.query(Vote).filter_by(
         doubt_id=doubt_id,
         user_id=user_id
@@ -129,35 +160,32 @@ def upvote_doubt(doubt_id: int, db: Session = Depends(get_db)):
     if existing_vote:
         return {"message": "Already voted"}
 
-    # find doubt
-    doubt = db.query(DoubtModel).filter(DoubtModel.id == doubt_id).first()
+    doubt = db.query(DoubtDB).filter(DoubtDB.id == doubt_id).first()
     if not doubt:
         raise HTTPException(status_code=404, detail="Doubt not found")
 
-    # create vote
     vote = Vote(doubt_id=doubt_id, user_id=user_id)
     db.add(vote)
 
-    # increment upvote
     doubt.upvotes += 1
 
     db.commit()
     db.refresh(doubt)
 
     return {
-    "message": "Upvoted",
-    "data": {
-        "id": doubt.id,
-        "upvotes": doubt.upvotes
+        "message": "Upvoted",
+        "data": {
+            "id": doubt.id,
+            "upvotes": doubt.upvotes
+        }
     }
-}
 
 
 # ------------------ GET SINGLE DOUBT ------------------
 
 @router.get("/doubts/{doubt_id}")
 def get_doubt_by_id(doubt_id: int, db: Session = Depends(get_db)):
-    doubt = db.query(DoubtModel).filter(DoubtModel.id == doubt_id).first()
+    doubt = db.query(DoubtDB).filter(DoubtDB.id == doubt_id).first()
 
     if not doubt:
         raise HTTPException(status_code=404, detail="Doubt not found")
@@ -169,7 +197,7 @@ def get_doubt_by_id(doubt_id: int, db: Session = Depends(get_db)):
 
 @router.delete("/doubts/{doubt_id}")
 def delete_doubt(doubt_id: int, db: Session = Depends(get_db)):
-    doubt = db.query(DoubtModel).filter(DoubtModel.id == doubt_id).first()
+    doubt = db.query(DoubtDB).filter(DoubtDB.id == doubt_id).first()
 
     if not doubt:
         raise HTTPException(status_code=404, detail="Doubt not found")
@@ -178,4 +206,5 @@ def delete_doubt(doubt_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     return {"message": "Doubt deleted"}
+
 
