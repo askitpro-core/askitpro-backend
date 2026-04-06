@@ -1,10 +1,10 @@
 def filter_doubts(doubts, search=None, sort=None, limit=None):
-    # Search in title + description
+    # Search in text only
     if search:
+        needle = search.lower()
         doubts = [
             d for d in doubts
-            if search.lower() in d.title.lower()
-            or search.lower() in d.description.lower()
+            if needle in d.text.lower()
         ]
 
     # Sort by upvotes

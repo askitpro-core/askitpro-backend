@@ -56,12 +56,12 @@ def find_cluster_for_doubt(new_doubt_text: str, existing_room_doubts: list) -> s
 
     # Check against existing doubts
     for doubt in existing_room_doubts:
-        # FIXED: Changed doubt.text to doubt.description to match your Database
+        # Compare against existing doubt text
         existing_embedding = model.encode(doubt.text)
         score = util.cos_sim(new_embedding, existing_embedding)[0][0].item()
         
         if score >= THRESHOLD:
-            print(f"🔥 Match found! Score: {score:.2f} (Matched with: '{doubt.description}')")
+            print(f"🔥 Match found! Score: {score:.2f}")
             return doubt.cluster_id
 
     print("New topic detected.")
@@ -100,8 +100,7 @@ def semantic_search(search_query: str, all_doubts: list, top_k: int = 3):
             matched_doubt = all_doubts[idx.item()]
             ranked_matches.append({
                 "id": matched_doubt.id,
-                "title": matched_doubt.title,
-                "description": matched_doubt.description,
+                "text": matched_doubt.text,
                 "tag": matched_doubt.tag,
                 "ai_confidence_score": round(match_score * 100, 2) # Convert 0.85 to 85.0%
             })
