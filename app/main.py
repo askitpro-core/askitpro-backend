@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routes import doubt_routes
 from app.models import db_models
 from app.database import engine, Base
+from app.routes.ws import router as ws_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -21,3 +22,4 @@ app.include_router(doubt_routes.router)
 @app.get("/ping")
 def ping():
     return {"status": "API is live"}
+app.include_router(ws_router)
