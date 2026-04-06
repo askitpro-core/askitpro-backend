@@ -1,13 +1,22 @@
 from fastapi import FastAPI
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
 from app.routes import doubt_routes
 from app.models import db_models
 from app.database import engine, Base
 from app.routes.ws import router as ws_router
 
+
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI()
+app = FastAPI(
+    title="AskItPro API",
+    version="2.0.0"
+)
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -17,9 +26,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 app.include_router(doubt_routes.router)
+app.include_router(ws_router)
+
+
+@app.get("/")
+def read_root():
+    return {"message": "API is live"}
 
 @app.get("/ping")
 def ping():
     return {"status": "API is live"}
-app.include_router(ws_router)
+
+
+class Doubt(BaseModel):
+    title: str
+    description: str
