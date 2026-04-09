@@ -1,4 +1,7 @@
 fastapi
-uvicorn
-pydantic
+uvicorn[standard]
 sqlalchemy
+pydantic
+sentence-transformers
+torch
+websockets
