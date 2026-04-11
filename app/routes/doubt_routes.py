@@ -182,3 +182,24 @@ def delete_doubt(doubt_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     return {"message": "Doubt deleted"}
+
+
+
+@router.get("/cluster-summary")
+def get_cluster_summary(cluster_id: str = Query(..., description="The ID of the cluster to summarize"), db: Session = Depends(get_db)):
+    # 1. Fetch all doubts belonging to this cluster
+    doubts = db.query(DoubtModel).filter(DoubtModel.cluster_id == cluster_id).all()
+    
+    if not doubts:
+        raise HTTPException(status_code=404, detail="Cluster not found")
+
+    # 2. MVP HACK: Sort by upvotes to find the most critical doubt in the cluster
+    sorted_doubts = sorted(doubts, key=lambda x: x.upvotes, reverse=True)
+    top_doubt = sorted_doubts[0]
+
+    # 3. Return the top doubt as the summary for the Teacher Dashboard
+    return {
+        "cluster_id": cluster_id,
+        "doubt_count": len(doubts),
+        "summary": f"Primary Issue: {top_doubt.text}" 
+    }
